@@ -1,0 +1,48 @@
+.code-runner-button {
+    cursor: pointer;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    height: 22px;
+    width: 22px;
+    margin: 4px;
+    opacity: 0.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.code-runner-button:hover,
+.code-output-clear:hover {
+    opacity: 0.8;
+}
+
+.code-output {
+    position: relative;
+    width: 100%;
+    overflow-y: auto;
+    max-height: 25vh;
+    max-height: 25svh;
+    min-height: 4em;
+}
+
+.code-output > div {
+    font-size: calc(var(--mainFontSize) * 0.9);
+}
+
+.code-output-hourglass {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    opacity: 0.5;
+}
+
+.code-output-clear {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 4px;
+    opacity: 0.4;
+    cursor: pointer;
+}
