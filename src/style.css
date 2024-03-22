@@ -23,7 +23,7 @@
     overflow-y: auto;
     max-height: 25vh;
     max-height: 25svh;
-    min-height: 4em;
+    min-height: 3em;
 }
 
 .code-output > div {

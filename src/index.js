@@ -154,7 +154,9 @@ class CustomConsole {
 
     addResult(result) {
         const div = document.createElement('div');
-        div.textContent = `Result: ${JSON.stringify(result)}`;
+        const small = document.createElement('small');
+        small.textContent = `Result: ${JSON.stringify(result)}`;
+        div.appendChild(small);
         this.outputElement.appendChild(div);
     }
 }
