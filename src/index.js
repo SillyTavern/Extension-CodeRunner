@@ -18,6 +18,7 @@ const events = [
 
 const clearedSymbol = Symbol('cancel');
 
+// Set event listeners for chat events.
 for (const event of events) {
     eventSource.on(event, addExecuteButtonToCodeBlocks);
 }
@@ -40,7 +41,7 @@ function addExecuteButtonToCodeBlocks() {
 
 /**
  * Adds a button to the code block to run the code.
- * @param {HTMLElement} block
+ * @param {HTMLElement} block Code block element.
  */
 function addExecuteButton(block) {
     const button = document.createElement('i');
@@ -52,8 +53,8 @@ function addExecuteButton(block) {
 
 /**
  * Get the output element for the code block.
- * @param {HTMLElement} block
- * @returns {{outputElement: HTMLElement, clearClicked: Promise<any>}}
+ * @param {HTMLElement} block Code block element.
+ * @returns {{outputElement: HTMLElement, clearClicked: Promise<Symbol>}} Output element and promise that resolves when the clear button is clicked.
  */
 function getOutputElement(block) {
     let outputElement = block.parentElement.querySelector('.code-output');
@@ -80,6 +81,11 @@ function getOutputElement(block) {
     return { outputElement, clearClicked };
 }
 
+/**
+ * Shows the loader icon in the output element.
+ * @param {HTMLElement} outputElement Output element.
+ * @returns {void}
+ */
 function showLoader(outputElement) {
     const loader = outputElement.querySelector('.code-output-hourglass');
     if (!loader) {
@@ -88,6 +94,11 @@ function showLoader(outputElement) {
     loader.style.display = 'block';
 }
 
+/**
+ * Hides the loader icon in the output element.
+ * @param {HTMLElement} outputElement Output element.
+ * @returns {void}
+ */
 function hideLoader(outputElement) {
     const loader = outputElement.querySelector('.code-output-hourglass');
     if (!loader) {
@@ -96,12 +107,22 @@ function hideLoader(outputElement) {
     loader.style.display = 'none';
 }
 
+/**
+ * Proxy console methods to add code output to the output element.
+ */
 class CustomConsole {
+    /**
+     * Creates a new CustomConsole instance.
+     * @param {HTMLElement} outputElement Output element to log to.
+     */
     constructor(outputElement) {
         this.#setupShims();
         this.outputElement = outputElement;
     }
 
+    /**
+     * Setup shims for console methods that are not implemented.
+     */
     #setupShims() {
         for (const key of Object.keys(console)) {
             if (typeof console[key] === 'function' && !this[key]) {
@@ -110,57 +131,112 @@ class CustomConsole {
         }
     }
 
+    /**
+     * Add the output text to the output element.
+     * @param {any[]} args Arguments to log.
+     * @returns {void}
+     */
     #addToOutput(args) {
         const div = document.createElement('div');
-        let text = '';
-        for (const arg of args) {
+        const text = args.reduce((acc, arg) => {
             switch (typeof arg) {
                 case 'object':
-                    text += JSON.stringify(arg);
-                    break;
+                    return acc + JSON.stringify(arg) + ' ';
                 default:
-                    text += String(arg);
-                    break;
+                    return acc + String(arg) + ' ';
             }
-            text += ' ';
-        }
+        }, '');
         div.textContent = text;
         this.outputElement.appendChild(div);
     }
 
+    /**
+     * Proxy for console.info.
+     * @param  {...any} args Arguments to log.
+     * @returns {void}
+     */
     info(...args) {
         this.#addToOutput(args);
     }
 
+    /**
+     * Proxy for console.log.
+     * @param  {...any} args Arguments to log.
+     * @returns {void}
+     */
     log(...args) {
         this.#addToOutput(args);
     }
 
+    /**
+     * Proxy for console.error.
+     * @param  {...any} args Arguments to log.
+     */
     error(...args) {
         this.#addToOutput(args);
     }
 
+    /**
+     * Proxy for console.warn.
+     * @param  {...any} args Arguments to log.
+     */
     warn(...args) {
         this.#addToOutput(args);
     }
 
+    /**
+     * Proxy for console.debug.
+     * @param  {...any} args Arguments to log.
+     */
     debug(...args) {
         this.#addToOutput(args);
     }
 
+    /**
+     * Proxy for console.table.
+     * @param  {...any} args Arguments to log.
+     */
+    table(...args) {
+        this.#addToOutput(args);
+    }
+
+    /**
+     * Proxy for console.trace.
+     * @param  {...any} args Arguments to log.
+     * @returns {void}
+     */
+    trace(...args) {
+        this.#addToOutput(args);
+    }
+
+    /**
+     * Proxy for alert.
+     * @param  {...any} args Arguments to log.
+     */
     alert(...args) {
         this.#addToOutput(args);
     }
 
-    addResult(result) {
+    /**
+     * Adds the passed time and result of the code to the output element.
+     * @param {any} result Returned result of the code.
+     * @param {number} time Milliseconds to run the code.
+     */
+    addResult(result, time) {
         const div = document.createElement('div');
         const small = document.createElement('small');
-        small.textContent = `Result: ${JSON.stringify(result)}`;
+        const seconds = (time / 1000).toFixed(2);
+        small.textContent = `Finished in ${seconds} sec. Result: ${JSON.stringify(result)}`;
         div.appendChild(small);
         this.outputElement.appendChild(div);
     }
 }
 
+/**
+ * Runs the code in the code block.
+ * @param {HTMLElement} block Code block element.
+ * @returns {Promise<void>} Promise that resolves when the code is run.
+ */
 async function runCode(block) {
     try {
         const { outputElement, clearClicked } = getOutputElement(block);
@@ -181,12 +257,14 @@ async function runCode(block) {
         const sandbox = new Sandbox({ globals, prototypeWhitelist });
         const scope = {};
         const execAsync = sandbox.compileAsync(code);
+        const start = Date.now();
         const result = await Promise.race([execAsync(scope).run(), clearClicked]);
+        const end = Date.now();
         hideLoader(outputElement);
         if (result === clearedSymbol) {
             return;
         }
-        customConsole.addResult(result);
+        customConsole.addResult(result, (end - start));
     } catch (error) {
         console.error('Error running code', error);
         toastr.error('Error running code', error.message);
