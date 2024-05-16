@@ -6,17 +6,23 @@ import Sandbox from '@nyariv/sandboxjs';
 const {
     eventSource,
     event_types,
+    executeSlashCommands,
 } = SillyTavern.getContext();
 
 const events = [
     event_types.CHARACTER_MESSAGE_RENDERED,
     event_types.USER_MESSAGE_RENDERED,
     event_types.CHAT_CHANGED,
-    event_types.MESSAGE_EDITED,
     event_types.MESSAGE_SWIPED,
 ];
 
+events.push('MESSAGE_UPDATED' in event_types ? event_types.MESSAGE_UPDATED : event_types.MESSAGE_EDITED);
+
 const clearedSymbol = Symbol('cancel');
+const supportedLanguages = [
+    'language-javascript',
+    'language-stscript',
+];
 
 // Set event listeners for chat events.
 for (const event of events) {
@@ -32,8 +38,9 @@ function addExecuteButtonToCodeBlocks() {
         if (block.classList.contains('code-runner')) {
             continue;
         }
-        if (block.classList.contains('language-javascript')) {
-            addExecuteButton(block);
+        if (supportedLanguages.some((lang) => block.classList.contains(lang))) {
+            const language = block.className.match(/language-(\w+)/)[1];
+            addExecuteButton(block, language);
             block.classList.add('code-runner');
         }
     }
@@ -42,12 +49,20 @@ function addExecuteButtonToCodeBlocks() {
 /**
  * Adds a button to the code block to run the code.
  * @param {HTMLElement} block Code block element.
+ * @param {string} language Language of the code block.
  */
-function addExecuteButton(block) {
+function addExecuteButton(block, language) {
     const button = document.createElement('i');
     button.title = 'Run code';
     button.classList.add('code-runner-button', 'fa-solid', 'fa-play');
-    button.addEventListener('click', () => runCode(block));
+    button.addEventListener('click', () => {
+        if (language === 'javascript') {
+            runJavaScriptCode(block);
+        }
+        if (language === 'stscript') {
+            runSTScriptCode(block);
+        }
+    });
     block.appendChild(button);
 }
 
@@ -237,7 +252,7 @@ class CustomConsole {
  * @param {HTMLElement} block Code block element.
  * @returns {Promise<void>} Promise that resolves when the code is run.
  */
-async function runCode(block) {
+async function runJavaScriptCode(block) {
     try {
         const { outputElement, clearClicked } = getOutputElement(block);
         showLoader(outputElement);
@@ -265,6 +280,37 @@ async function runCode(block) {
             return;
         }
         customConsole.addResult(result, (end - start));
+    } catch (error) {
+        console.error('Error running code', error);
+        toastr.error('Error running code', error.message);
+    }
+}
+
+/**
+ * Executes STScript code in the code block.
+ * @param {HTMLElement} block Code block element.
+ * @returns {Promise<void>} Promise that resolves when the code is run.
+ */
+async function runSTScriptCode(block) {
+    try {
+        const { outputElement, clearClicked } = getOutputElement(block);
+        const code = block.textContent;
+        const abortController = new AbortController();
+        const customConsole = new CustomConsole(outputElement);
+        showLoader(outputElement);
+        const start = Date.now();
+        const reportProgress = (done, total) => {
+            // customConsole.info(`${done}/${total}`);
+        }
+        const executePromise = executeSlashCommands(code, true, null, false, null, abortController, reportProgress);
+        const result = await Promise.race([executePromise, clearClicked]);
+        hideLoader(outputElement);
+        if (result === clearedSymbol) {
+            abortController.abort();
+            return;
+        }
+        const end = Date.now();
+        customConsole.addResult(result?.pipe, (end - start));
     } catch (error) {
         console.error('Error running code', error);
         toastr.error('Error running code', error.message);
