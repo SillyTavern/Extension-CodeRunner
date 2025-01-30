@@ -33,7 +33,7 @@ for (const event of events) {
  * Adds a button to all JS code blocks to run the code.
  */
 function addExecuteButtonToCodeBlocks() {
-    const blocks = Array.from(document.querySelectorAll('#chat pre code'));
+    const blocks = Array.from(document.querySelectorAll('#chat .mes_text pre code'));
     for (const block of blocks) {
         if (block.classList.contains('code-runner')) {
             continue;
