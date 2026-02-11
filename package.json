@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@nyariv/sandboxjs": "^0.8.26"
+    "@nyariv/sandboxjs": "^0.8.31"
   },
   "scripts": {
     "build": "webpack --mode production"
